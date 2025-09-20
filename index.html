@@ -16,7 +16,17 @@
     }
     .produto img { width: 100%; max-width: 140px; height: 140px; object-fit: contain; cursor: pointer; margin: 0 auto; }
     .produto h3 { margin: 0.5rem 0; color: #4b0082; cursor: pointer; font-size: 1rem; }
-    .produto p { font-size: 0.85rem; color: #333; display: none; margin-top: 0.5rem; }
+    .produto p { 
+      font-size: 0.9rem; 
+      color: #222; 
+      display: none; 
+      margin-top: 0.5rem; 
+      background: #f7f2ff; 
+      padding: 0.5rem; 
+      border-left: 4px solid #4b0082; 
+      border-radius: 6px;
+      font-style: italic;
+    }
     .produto button { background: #4b0082; color: #fff; border: none; padding: 0.5rem 0.8rem; border-radius: 5px; cursor: pointer; font-size: 0.9rem; margin-top: 0.5rem; }
     .produto button:hover { background: #36005d; }
 
@@ -29,11 +39,32 @@
 
     /* PAGAMENTO */
     #pagamento { display: none; padding: 1rem; background: #f7e7ff; border-top: 3px solid #4b0082; margin-top: 0.5rem; text-align: center; border-radius: 10px; }
+    #pagamento h2 { margin-bottom: 1rem; color: #4b0082; }
     #pixInfo { display: flex; justify-content: center; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; font-size: 1rem; }
-    #pixKey { border: 1px solid #4b0082; padding: 6px 10px; border-radius: 6px; font-weight: 500; }
-    #pixPanel button { padding: 0.5rem 1rem; border-radius: 6px; border: none; background: #4b0082; color: #fff; cursor: pointer; }
-    #pixPanel button:hover { background: #36005d; }
-    #qrCodePlaceholder { width: 150px; height: 150px; background: #ccc; margin: 10px auto; display: flex; align-items: center; justify-content: center; border-radius: 10px; font-size: 0.9rem; color: #333; }
+    #pixKey { border: 2px solid #4b0082; padding: 6px 10px; border-radius: 6px; font-weight: 600; background: #fff; }
+    #pixPanel button { padding: 0.5rem 1rem; border-radius: 6px; border: none; background: #4b0082; color: #fff; cursor: pointer; transition: all 0.3s ease; }
+    #pixPanel button:hover { background: #36005d; transform: scale(1.05); }
+    #qrCodePlaceholder img { width: 150px; height: 150px; border-radius: 10px; margin: 0.5rem 0; }
+    .resumo { margin-top: 1rem; background: #fff; padding: 0.8rem; border-radius: 8px; border: 1px solid #ccc; text-align: left; }
+
+    /* BOTÃO JÁ PAGUEI */
+    #pagamento button.confirmar {
+      margin-top: 1rem;
+      background: #28a745;
+      color: #fff;
+      font-size: 1.1rem;
+      font-weight: bold;
+      padding: 0.7rem 1.2rem;
+      border-radius: 8px;
+      border: none;
+      cursor: pointer;
+      width: 100%;
+      transition: all 0.3s ease;
+    }
+    #pagamento button.confirmar:hover {
+      background: #218838;
+      transform: scale(1.05);
+    }
 
     /* RESPONSIVIDADE */
     @media (max-width: 600px) {
@@ -54,24 +85,47 @@
     <button id="finalizar">Finalizar Compra</button>
   </section>
 
-  <section id="pagamento">
-    <h2>💳 Pagamento via Pix</h2>
-    <div id="pixInfo">
-      <span id="pixKey">11972500459</span>
-      <button onclick="copyPix()">Copiar</button>
+  <<section id="pagamento">
+  <h2>💳 Pagamento via Pix </h2>
+
+  <!-- NOVO CONTÊINER FLEX -->
+  <div id="pixContainer" style="display: flex; justify-content: center; align-items: center; gap: 20px; flex-wrap: wrap; margin-bottom: 10px;">
+    
+    <!-- QR CODE -->
+    <div id="qrCodePlaceholder" style="text-align: center;">
+      <img src="img-loja/QRcode.jpg" alt="QR Code Pix" style="width:150px; height:150px; border-radius:10px;">
+
+      <p><strong>Destinatário:</strong> Eduarda Luiza da Silva | <strong> Instituição: </strong>ITAÚ UNIBANCO S.A.</p>
+
     </div>
-    <div id="qrCodePlaceholder">QR Code aqui</div>
-    <button onclick="confirmPayment()">Já paguei</button>
-  </section>
+
+    <!-- PIX E BOTÃO -->
+    <div id="pixInfo" style="display: flex; flex-direction: column; align-items: center; gap: 10px;">
+      <span id="pixKey" style="border: 2px solid #4b0082; padding: 6px 10px; border-radius: 6px; font-weight: 600; background: #fff;">eluiza7042@gmail.com</span>
+      <button onclick="copyPix()" style="padding: 0.5rem 1rem; border-radius: 6px; border: none; background: #4b0082; color: #fff; cursor: pointer; transition: all 0.3s ease;">📋 Copiar chave pix</button>
+    </div>
+
+  </div>
+
+  <div class="resumo">
+    <h3>Resumo da Compra</h3>
+    <p><strong>Total a pagar:</strong> R$ <span id="resumoTotal">0.00</span></p>
+    <p>Após realizar o pagamento via Pix, clique em <strong>“Já paguei”</strong> para confirmar sua compra.</p>
+  </div>
+
+  <button class="confirmar" onclick="confirmPayment()">✅ Já paguei</button>
+</section>
 
   <script>
     const produtos = [
-      {nome: "Carregador", preco: 15, desc: "Carregador rápido USB."},
-      {nome: "Fone de Ouvido", preco: 20, desc: "Fone estéreo com ótima qualidade de som."},
-      {nome: "Guarda-Chuva", preco: 40, desc: "Guarda-chuva resistente ao vento."},
-      {nome: "Cabo USB", preco: 10, desc: "Cabo USB de 1 metro para carregamento."},
-      {nome: "Power Bank", preco: 60, desc: "Bateria portátil 10.000mAh."},
-      {nome: "Suporte de Celular", preco: 25, desc: "Suporte veicular ajustável."}
+      {nome: "Cabo carregador", preco: 15, desc: "Cabo de carregador disponível nos modelos: <strong>Tipo C e Lighint (IPhone)</strong>. Uma ponta USB, outra ponta carregador. Não acompanha fonte.", img: "img-loja/Foto1.jpg"},
+      {nome: "Fone de Ouvido Bluetooth", preco: 20, desc: "Fone de ouvido sem fio com cancelamento de ruído e microfone intra-auricular. Confortável, potente e com carregamento rápido. Autonomia de até <strong>4 horas.</strong> Acompanha: <strong>Par de fones + Caixa de carregamento + cabo USB + manual.</strong>", img: "img-loja/Foto2.jpg"},
+      {nome: "Guarda-Chuva", preco: 35, desc: "Guarda-chuva compacto e reforçado, cabe em sua bolsa. (cores conforme disponibilidade)", img: "img-loja/Foto3.jpg"},
+      {nome: "Power Bank (Carregador portátil)", preco: 40, desc: "Carregador Portátil Power Bank 10000mah com 3 Saídas: <strong>Tipo C, lighting (iphone) e V8 (micro USB).</strong>", img: "img-loja/Foto4.jpg"},
+      {nome: "Kit Fonte + Cabo Carregador", preco: 25, desc: "Kit Carregador completo 1.2A, incluso <strong>fonte + cabo de carregamento.</strong> Disponível para <strong>Tipo C e Lighing (IPhone).</strong>", img: "img-loja/Foto5.jpg"},
+      {nome: "Cabo carregador USB 3 em 1", preco: 20, desc: "<strong>COMPATIBILIDADE UNIVERSAL: </strong>Cabo 3 em 1 com conectores: <strong>Tipo-C, Lightning (IPhone), e Micro USB (V8)</strong>, permitindo carregar diversos dispositivos com um único cabo.", img: "img-loja/Foto6.jpg"},
+      {nome: "Fone com microfone", preco: 10, desc: "Fone com com fio e microfone, entrada P2.", img: "img-loja/Foto7.jpg"},
+      {nome: "", preco: 0, desc: "Produto indisponível temporariamente", img: "img-loja/Foto8.jpg"}
     ];
 
     const lista = document.getElementById("listaProdutos");
@@ -81,7 +135,7 @@
       const div = document.createElement("div");
       div.className = "produto";
       div.innerHTML = `
-        <img src="https://via.placeholder.com/100" alt="${p.nome}" onclick="toggleDescription(this)" />
+        <img src="${p.img}" alt="${p.nome}" onclick="toggleDescription(this)" />
         <h3 onclick="toggleDescription(this)">${p.nome}</h3>
         <p>${p.desc}</p>
         <button onclick="addToCart('${p.nome}', ${p.preco}, event)">Adicionar - R$${p.preco}</button>
@@ -121,6 +175,7 @@
         total += subtotal;
       }
       document.getElementById("total").innerText = total.toFixed(2);
+      document.getElementById("resumoTotal").innerText = total.toFixed(2);
     }
 
     document.getElementById("finalizar").addEventListener("click", ()=>{
@@ -137,6 +192,7 @@
       el.select();
       document.execCommand("copy");
       document.body.removeChild(el);
+      alert("Chave Pix copiada!");
     }
 
     function confirmPayment(){
@@ -148,7 +204,7 @@
         total+=subtotal;
       }
       msg+=`Total: R$${total}`;
-      window.open(`https://wa.me/5511972500459?text=${msg}`,"_blank");
+      window.open(`https://wa.me/5511970424524?text=${msg}`,"_blank");
       for(let key in cart) delete cart[key];
       renderCart();
       document.getElementById("pagamento").style.display = "none";
