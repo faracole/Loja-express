@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pagamento PIX</title>
+  <style>
+    body { font-family: Arial, sans-serif; background:#fff8e7; margin:0; padding:20px; text-align:center; }
+    h1 { color:#4b0082; margin-bottom:10px; }
+    
+    .container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 20px;
+    }
+
+    .box { background:white; padding:20px; border-radius:12px; box-shadow:0 4px 6px rgba(0,0,0,0.2); text-align:left; width:100%; max-width:400px; }
+    
+    .pix-item { font-size:18px; margin:8px 0; }
+    .pix-key { font-size:20px; font-weight:bold; color:#4b0082; margin:15px 0; text-align:center; }
+    
+    .resumo-box { border-top:2px solid #4b0082; padding-top:15px; }
+    .resumo { font-size:16px; line-height:1.5; }
+    
+    button { background:#4b0082; color:white; border:none; padding:12px 20px; border-radius:8px; cursor:pointer; font-size:16px; width:100%; margin-top:15px; }
+    button:hover { background:#360061; }
+
+    @media (max-width: 420px) {
+      .box { padding:15px; }
+      .pix-key { font-size:18px; }
+    }
+  </style>
+</head>
+<body>
+  <h1>Pagamento via PIX</h1>
+  <p>Confira os dados do PIX e o resumo do seu pedido antes de copiar a chave.</p>
+
+  <div class="container">
+    <!-- Dados do PIX -->
+    <div class="box pix-box">
+      <div class="pix-item"><strong>Banco:</strong> Itaú Unibanco S.A.</div>
+      <div class="pix-item"><strong>Beneficiário:</strong> EDUARDA LUIZA DA SILVA</div>
+      <div class="pix-item"><strong>Chave PIX (e-mail):</strong></div>
+      <div class="pix-key" id="pixKey">eluiza7042@gmail.com</div>
+      <button onclick="copiarPix()">📋 Copiar chave PIX e continuar</button>
+    </div>
+
+    <!-- Resumo do pedido -->
+    <div class="box resumo-box" id="finalBox">
+      <h2>Resumo do pedido</h2>
+      <div class="resumo" id="resumoPedido"></div>
+      <!-- botão escondido inicialmente -->
+      <button id="btnJaPaguei" style="display:none;" onclick="jaPaguei()">✅ Já paguei</button>
+    </div>
+  </div>
+
+  <script>
+    function carregarCarrinho() {
+      const cartRaw = localStorage.getItem('cart');
+      if (!cartRaw) return {};
+      try {
+        const parsed = JSON.parse(cartRaw);
+        const normalized = {};
+        for (const k in parsed) {
+          const it = parsed[k];
+          normalized[k] = {
+            nome: it.nome,
+            price: parseFloat(it.price || 0),
+            qtd: parseInt(it.qtd || 1)
+          };
+        }
+        return normalized;
+      } catch(e) { return {}; }
+    }
+
+    function copiarPix() {
+      const pixKey = document.getElementById("pixKey").innerText;
+      navigator.clipboard.writeText(pixKey).then(() => {
+        alert("Chave PIX copiada! Agora faça o pagamento e clique em 'Já paguei'.");
+        // mostrar botão "Já paguei"
+        document.getElementById("btnJaPaguei").style.display = "block";
+      });
+    }
+
+    function jaPaguei() {
+      const carrinho = carregarCarrinho();
+      let msg = "🛒 Pedido Loja Express:%0A";
+      let total = 0;
+      for (const key in carrinho) {
+        const item = carrinho[key];
+        const subtotal = item.price * item.qtd;
+        msg += `${item.nome} x${item.qtd} - R$ ${subtotal.toFixed(2)}%0A`;
+        total += subtotal;
+      }
+      msg += `Total: R$ ${total.toFixed(2)}`;
+      
+      // limpa carrinho
+      localStorage.removeItem('cart');
+
+      // abre WhatsApp
+      window.open(`https://wa.me/5511970424524?text=${msg}`, "_blank");
+    }
+
+    // Monta resumo do pedido automaticamente
+    const carrinho = carregarCarrinho();
+    let total = 0;
+    let html = '';
+    for (const key in carrinho) {
+      const item = carrinho[key];
+      const subtotal = item.price * item.qtd;
+      total += subtotal;
+      html += `${item.nome} x${item.qtd} - R$ ${subtotal.toFixed(2)}<br>`;
+    }
+    html += `<strong>Total a pagar: R$ ${total.toFixed(2)}</strong>`;
+    document.getElementById('resumoPedido').innerHTML = html;
+  </script>
+</body>
+</html>

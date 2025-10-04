@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Loja Express — Revisão do Pedido</title>
+  <style>
+    body { font-family: Arial, sans-serif; background:#fff8e7; margin:0; padding:0; color:#222; }
+    header { background:#ffcc00; color:#4b0082; text-align:center; padding:1rem; font-size:1.4rem; font-weight:bold; }
+    .container { max-width:900px; margin:1rem auto; padding:1rem; }
+    .item { display:flex; gap:12px; align-items:center; background:#fff; padding:12px; border-radius:10px; border:1px solid #e7e0f6; margin-bottom:10px; }
+    .thumb { width:92px; height:92px; object-fit:cover; border-radius:8px; border:2px solid #f0e9ff; background:#faf7ff; }
+    .info { flex:1; }
+    .info h3 { margin:0; color:#4b0082; font-size:1.05rem; }
+    .info .unit { font-weight:600; margin-top:6px; }
+    .controls { display:flex; align-items:center; gap:8px; margin-left:12px; }
+    .qty-btn { width:34px; height:34px; border-radius:6px; border:none; background:#4b0082; color:#fff; font-weight:bold; cursor:pointer; }
+    .qty-btn:hover { background:#36005d; transform:translateY(-1px); }
+    .remove { background:#ff4d4f; border:none; color:#fff; padding:6px 10px; border-radius:6px; cursor:pointer; }
+    .remove:hover { opacity:0.9; transform:translateY(-1px); }
+    .subtotal { font-weight:700; min-width:110px; text-align:right; }
+    .rodape { margin-top:1rem; display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; }
+    .total { background:#fff; padding:12px; border-radius:10px; border:1px solid #e0d8f8; font-size:1.1rem; font-weight:700; color:#4b0082; }
+    .acoes { display:flex; gap:10px; }
+    .btn { padding:10px 16px; border-radius:8px; border:none; cursor:pointer; font-weight:700; }
+    .btn-voltar { background:#ffcc00; color:#4b0082; }
+    .btn-pagar { background:#4b0082; color:#fff; }
+    .empty { text-align:center; color:#666; padding:2rem 0; }
+    @media (max-width:600px){
+      .item { flex-direction:column; align-items:flex-start; }
+      .controls{ width:100%; justify-content:space-between; }
+      .subtotal { text-align:left; width:100%; }
+      .rodape { flex-direction:column; align-items:stretch; }
+      .acoes { width:100%; justify-content:space-between; }
+    }
+  </style>
+</head>
+<body>
+  <header>🔍 Revisão do Pedido — Loja Express</header>
+
+  <main class="container">
+    <div id="itensContainer"></div>
+
+    <div id="vazio" class="empty" style="display:none;">Seu carrinho está vazio.</div>
+
+    <div class="rodape" id="rodape" style="display:none;">
+      <div class="total">Total: <span id="totalBR">R$ 0,00</span></div>
+      <div class="acoes">
+        <button class="btn btn-voltar" onclick="voltarParaProdutos()">← Voltar para editar</button>
+        <button class="btn btn-pagar" onclick="seguirParaPagamento()">Seguir para pagamento →</button>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    /**********************
+     * Helpers
+     **********************/
+    const fmt = (n) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(n);
+
+    // Tenta carregar ambos os formatos: 'cart' (obj) e 'carrinho' (array)
+    function carregarRawDoStorage() {
+      try {
+        const cartStr = localStorage.getItem('cart');
+        if (cartStr) {
+          const parsed = JSON.parse(cartStr);
+          if (typeof parsed === 'object' && !Array.isArray(parsed)) return { type: 'object', data: parsed };
+        }
+      } catch(e){ /* ignore */ }
+
+      try {
+        const carrinhoStr = localStorage.getItem('carrinho');
+        if (carrinhoStr) {
+          const parsed = JSON.parse(carrinhoStr);
+          if (Array.isArray(parsed)) return { type: 'array', data: parsed };
+        }
+      } catch(e){ /* ignore */ }
+
+      // nenhuma chave encontrada
+      return { type: 'none', data: null };
+    }
+
+    // Normaliza para um objeto: { chave: { nome, price, qtd, img } }
+    function normalizar(raw) {
+      const norm = {};
+      if (raw.type === 'object') {
+        // raw.data é um objeto com chaves (muitos códigos que criamos salvavam assim)
+        const obj = raw.data;
+        for (const k in obj) {
+          const it = obj[k] || {};
+          const nome = it.nome || it.name || k;
+          const price = parseFloat(it.price ?? it.preco ?? 0) || 0;
+          const qtd = parseInt(it.qtd ?? it.quantity ?? 1) || 0;
+          const img = it.img || it.imagem || it.image || '';
+          if (qtd > 0) norm[k] = { nome, price, qtd, img };
+        }
+      } else if (raw.type === 'array') {
+        // raw.data é um array (cada push representava um add)
+        raw.data.forEach((it, idx) => {
+          const nome = it.nome || it.name || `produto-${idx}`;
+          const price = parseFloat(it.preco ?? it.price ?? 0) || 0;
+          const img = it.imagem || it.img || it.image || '';
+          // agrupa por nome
+          const key = nome;
+          if (!norm[key]) norm[key] = { nome, price, qtd: 0, img };
+          norm[key].qtd += 1;
+          // se price ou img estiverem zerados, mantém os existentes
+          if (!norm[key].price && price) norm[key].price = price;
+          if (!norm[key].img && img) norm[key].img = img;
+        });
+      }
+      return norm;
+    }
+
+    // salva normalized tanto em 'cart' (obj) quanto em 'carrinho' (array) para compatibilidade
+    function salvarNoStorage(normalized) {
+      // salvar como objeto 'cart'
+      const obj = {};
+      for (const k in normalized) {
+        obj[k] = {
+          nome: normalized[k].nome,
+          price: normalized[k].price,
+          qtd: normalized[k].qtd,
+          img: normalized[k].img
+        };
+      }
+      localStorage.setItem('cart', JSON.stringify(obj));
+
+      // salvar também como array 'carrinho' (um item por unidade) para compatibilidade com versões que esperam array
+      const arr = [];
+      for (const k in normalized) {
+        const it = normalized[k];
+        for (let i=0;i<it.qtd;i++){
+          arr.push({ nome: it.nome, preco: it.price, imagem: it.img });
+        }
+      }
+      localStorage.setItem('carrinho', JSON.stringify(arr));
+    }
+
+    /**********************
+     * Render
+     **********************/
+    const itensContainer = document.getElementById('itensContainer');
+    const rodape = document.getElementById('rodape');
+    const vazioEl = document.getElementById('vazio');
+    const totalBR = document.getElementById('totalBR');
+
+    let normalizedCart = {};
+
+    function render() {
+      itensContainer.innerHTML = '';
+      const keys = Object.keys(normalizedCart);
+      if (keys.length === 0) {
+        vazioEl.style.display = 'block';
+        rodape.style.display = 'none';
+        return;
+      } else {
+        vazioEl.style.display = 'none';
+        rodape.style.display = 'flex';
+      }
+
+      let total = 0;
+      keys.forEach((k) => {
+        const it = normalizedCart[k];
+        const sub = (it.price || 0) * it.qtd;
+        total += sub;
+
+        const div = document.createElement('div');
+        div.className = 'item';
+        div.innerHTML = `
+          <img class="thumb" src="${it.img || 'img-loja/Foto1.jpg'}" alt="${(it.nome||'Produto')}" onerror="this.style.opacity=0.5;" />
+          <div class="info">
+            <h3>${it.nome || k}</h3>
+            <div class="unit">Unit: ${fmt(it.price || 0)}</div>
+          </div>
+
+          <div class="controls">
+            <button class="qty-btn" data-action="minus" data-key="${k}">−</button>
+            <div style="min-width:34px; text-align:center; font-weight:700;">${it.qtd}</div>
+            <button class="qty-btn" data-action="plus" data-key="${k}">+</button>
+            <button class="remove" data-action="remove" data-key="${k}" title="Remover item">Remover</button>
+          </div>
+
+          <div class="subtotal">${fmt(sub)}</div>
+        `;
+        itensContainer.appendChild(div);
+      });
+
+      totalBR.innerText = fmt(total);
+      // atualizar storage
+      salvarNoStorage(normalizedCart);
+      // ligar eventos
+      attachEvents();
+    }
+
+    function attachEvents(){
+      // handlers para todos os botões gerados
+      document.querySelectorAll('[data-action]').forEach(btn => {
+        btn.onclick = (e) => {
+          const action = btn.getAttribute('data-action');
+          const key = btn.getAttribute('data-key');
+          if (action === 'plus') {
+            normalizedCart[key].qtd++;
+          } else if (action === 'minus') {
+            normalizedCart[key].qtd--;
+            if (normalizedCart[key].qtd <= 0) delete normalizedCart[key];
+          } else if (action === 'remove') {
+            delete normalizedCart[key];
+          }
+          render();
+        };
+      });
+    }
+
+    /**********************
+     * Início
+     **********************/
+    function iniciar() {
+      const raw = carregarRawDoStorage();
+      normalizedCart = normalizar(raw);
+      render();
+    }
+
+    function voltarParaProdutos() {
+      window.location.href = 'produtos.html';
+    }
+
+    function seguirParaPagamento() {
+      const keys = Object.keys(normalizedCart);
+      if (keys.length === 0) {
+        alert('Seu carrinho está vazio!');
+        return;
+      }
+      // garante que storage está atualizado antes do redirecionamento
+      salvarNoStorage(normalizedCart);
+      window.location.href = 'pagamento.html';
+    }
+
+    // start
+    iniciar();
+  </script>
+</body>
+</html>
